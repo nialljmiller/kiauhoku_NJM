@@ -4,14 +4,11 @@ on:
   push:
     branches:
       - main
-      - add_ci
   pull_request:
-    branches:
-      - main
 
 jobs:
   test:
-    name: Run Tests on ${{ matrix.os }}
+    name: Run tests on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
