@@ -17,7 +17,7 @@ from urllib.parse import urljoin
 from socket import gethostname
 
 
-grids_url_base = "https://zenodo.org/api/records"
+grids_url_base = "https://zenodo.org/api/records/"
 grids_url = urljoin(grids_url_base, "4287717")
 
 grids_version_url = { # hard coding this until I find a better solution
