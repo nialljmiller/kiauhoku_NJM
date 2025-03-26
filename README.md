@@ -4,6 +4,7 @@
 [![GitHub version](https://badge.fury.io/gh/zclaytor%2Fkiauhoku.svg)](https://badge.fury.io/gh/zclaytor%2Fkiauhoku)
 [![PyPI version](https://badge.fury.io/py/kiauhoku.svg)](https://badge.fury.io/py/kiauhoku)
 [![Paper](https://img.shields.io/badge/read-the_paper-blue)](https://ui.adsabs.harvard.edu/abs/2020ApJ...888...43C/abstract)
+![CI](https://github.com/zclaytor/kiauhoku/actions/workflows/ci.yml/badge.svg)
 
 Python utilities for stellar model grid interpolation.
 
