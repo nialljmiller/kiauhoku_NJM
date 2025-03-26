@@ -25,7 +25,7 @@ setuptools.setup(
     author="Zachary R. Claytor",
     author_email="zclaytor@stsci.edu",
     description="Utilities for interacting and interpolating stellar evolution models",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/zclaytor/kiauhoku",
     license="MIT",
