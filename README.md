@@ -108,6 +108,66 @@ kh.install_grid('custom_install')
 
 If you create a setup file for your favorite model grid and you'd like it to be public, create a pull request and I'll add you as a contributor!
 
+## Papers that use Kīauhōkū
+
+This is a list of papers that have used `kiauhoku` in their research. If you don't see your paper here, please let me know, or open a pull request!
+<!-- 
+This list is taken from https://ui.adsabs.harvard.edu/public-libraries/AKgEKEL5TDS8fCAVNvaqTA, exported with custom format:
+%ZEncoding:html%zn. <A href="%u">%T</A>: %3.3G, %Y, %q, %V, %p.\n
+-->
+
+1. <A href="https://ui.adsabs.harvard.edu/abs/2022ApJ...930....7A">Rotation Distributions around the Kraft Break with TESS and Kepler: The Influences of Age, Metallicity, and Binarity</A>: Avallone, E. A., Tayar, J. N., van Saders, J. L., et al., 2022, ApJ, 930, 7.
+
+2. <A href="https://ui.adsabs.harvard.edu/abs/2022ApJ...936..100B">Is [Y/Mg] a Reliable Age Diagnostic for FGK Stars?</A>: Berger, T. A., van Saders, J. L., Huber, D., et al., 2022, ApJ, 936, 100.
+
+3. <A href="https://ui.adsabs.harvard.edu/abs/2024ApJ...970..166B">A New Asteroseismic Kepler Benchmark Constrains the Onset of Weakened Magnetic Braking in Mature Sun-like Stars</A>: Bhalotia, V., Huber, D., van Saders, J. L., et al., 2024, ApJ, 970, 166.
+
+4. <A href="https://ui.adsabs.harvard.edu/abs/2023AJ....165...74B">Kepler-102: Masses and Compositions for a Super-Earth and Sub-Neptune Orbiting an Active Star</A>: Brinkman, C. L., Cadman, J., Weiss, L., et al., 2023, AJ, 165, 74.
+
+5. <A href="https://ui.adsabs.harvard.edu/abs/2024RNAAS...8..201B">Identifying Uncertainties in Stellar Evolution Models Using the Open Cluster M67</A>: Byrom, S., Tayar, J., 2024, RNAAS, 8, 201.
+
+6. <A href="https://ui.adsabs.harvard.edu/abs/2021ApJ...922..229C">TESS Asteroseismology of α Mensae: Benchmark Ages for a G7 Dwarf and Its M Dwarf Companion</A>: Chontos, A., Huber, D., Berger, T. A., et al., 2021, ApJ, 922, 229.
+
+7. <A href="https://ui.adsabs.harvard.edu/abs/2024ApJ...962...47C">TESS Stellar Rotation up to 80 Days in the Southern Continuous Viewing Zone</A>: Claytor, Z. R., van Saders, J. L., Cao, L., et al., 2024, ApJ, 962, 47.
+
+8. <A href="https://ui.adsabs.harvard.edu/abs/2020ApJ...888...43C">Chemical Evolution in the Milky Way: Rotation-based Ages for APOGEE-Kepler Cool Dwarf Stars</A>: Claytor, Z. R., van Saders, J. L., Santos, Â. R. G., et al., 2020, ApJ, 888, 43.
+
+9. <A href="https://ui.adsabs.harvard.edu/abs/2023MNRAS.520.5283G">The TIME Table: rotation and ages of cool exoplanet host stars</A>: Gaidos, E., Claytor, Z., Dungee, R., et al., 2023, MNRAS, 520, 5283.
+
+10. <A href="https://ui.adsabs.harvard.edu/abs/2025arXiv250109095K">A Pair of Dynamically Interacting Sub-Neptunes Around TOI-6054</A>: Kroft, M. A., Beatty, T. G., Crossfield, I. J. M., et al., 2025, arXiv, arXiv:2501.09095.
+
+11. <A href="https://ui.adsabs.harvard.edu/abs/2025AJ....169...47K">Two Earth-size Planets and an Earth-size Candidate Transiting the nearby Star HD 101581</A>: Kunimoto, M., Lin, Z., Millholland, S., et al., 2025, AJ, 169, 47.
+
+12. <A href="https://ui.adsabs.harvard.edu/abs/2023ApJ...952..131M">Magnetic Activity Evolution of Solar-like Stars. I. S &lt;SUB&gt;ph&lt;/SUB&gt;-Age Relation Derived from Kepler Observations</A>: Mathur, S., Claytor, Z. R., Santos, Â. R. G., et al., 2023, ApJ, 952, 131.
+
+13. <A href="https://ui.adsabs.harvard.edu/abs/2025arXiv250210109M">Magnetic activity evolution of solar-like stars: II. $S_{\rm ph}$-Ro evolution of Kepler main-sequence targets</A>: Mathur, S., Santos, A. R. G., Claytor, Z. R., et al., 2025, arXiv, arXiv:2502.10109.
+
+14. <A href="https://ui.adsabs.harvard.edu/abs/2020ApJ...900..154M">The Evolution of Rotation and Magnetic Activity in 94 Aqr Aa from Asteroseismology with TESS</A>: Metcalfe, T. S., van Saders, J. L., Basu, S., et al., 2020, ApJ, 900, 154.
+
+15. <A href="https://ui.adsabs.harvard.edu/abs/2021ApJ...921..122M">Magnetic and Rotational Evolution of ρ CrB from Asteroseismology with TESS</A>: Metcalfe, T. S., van Saders, J. L., Basu, S., et al., 2021, ApJ, 921, 122.
+
+16. <A href="https://ui.adsabs.harvard.edu/abs/2024MNRAS.528.4528M">Abundant sub-micron grains revealed in newly discovered extreme debris discs</A>: Moór, A., Ábrahám, P., Su, K. Y. L., et al., 2024, MNRAS, 528, 4528.
+
+17. <A href="https://ui.adsabs.harvard.edu/abs/2025MNRAS.537...35R">NGTS-EB-7, an eccentric, long-period, low-mass eclipsing binary</A>: Rodel, T., Watson, C. A., Ulmer-Moll, S., et al., 2025, MNRAS, 537, 35.
+
+18. <A href="https://ui.adsabs.harvard.edu/abs/2023A&amp;A...672A..56S">Temporal variation of the photometric magnetic activity for the Sun and Kepler solar-like stars</A>: Santos, A. R. G., Mathur, S., García, R. A., et al., 2023, A&amp;A, 672, A56.
+
+19. <A href="https://ui.adsabs.harvard.edu/abs/2021AJ....162..215S">TESS-Keck Survey. V. Twin Sub-Neptunes Transiting the Nearby G Star HD 63935</A>: Scarsdale, N., Murphy, J. M. A., Batalha, N. M., et al., 2021, AJ, 162, 215.
+
+20. <A href="https://ui.adsabs.harvard.edu/abs/2024RNAAS...8..166S">A Lack of Mass-gap Compact Object Binaries in APOGEE</A>: Schochet, M., Tayar, J., Andrews, J. J., 2024, RNAAS, 8, 166.
+
+21. <A href="https://ui.adsabs.harvard.edu/abs/2022ApJ...927...31T">A Guide to Realistic Uncertainties on the Fundamental Properties of Solar-type Exoplanet Host Stars</A>: Tayar, J., Claytor, Z. R., Huber, D., et al., 2022, ApJ, 927, 31.
+
+22. <A href="https://ui.adsabs.harvard.edu/abs/2022ApJ...930...78T">Potential Habitability as a Stellar Property: Effects of Model Uncertainties and Measurement Precision</A>: Tuchow, N. W., Wright, J. T., 2022, ApJ, 930, 78.
+
+23. <A href="https://ui.adsabs.harvard.edu/abs/2022AJ....163..293T">The TESS-Keck Survey. XI. Mass Measurements for Four Transiting Sub-Neptunes Orbiting K Dwarf TOI-1246</A>: Turtelboom, E. V., Weiss, L. M., Dressing, C. D., et al., 2022, AJ, 163, 293.
+
+24. <A href="https://ui.adsabs.harvard.edu/abs/2024MNRAS.535...90V">HD 28185 revisited: an outer planet, instead of a brown dwarf, on a Saturn-like orbit</A>: Venner, A., An, Q., Huang, C. X., et al., 2024, MNRAS, 535, 90.
+
+25. <A href="https://ui.adsabs.harvard.edu/abs/2021AJ....161...56W">The TESS-Keck Survey. II. An Ultra-short-period Rocky Planet and Its Siblings Transiting the Galactic Thick-disk Star TOI-561</A>: Weiss, L. M., Dai, F., Huber, D., et al., 2021, AJ, 161, 56.
+
+
+
 [kiauhoku github]: https://github.com/zclaytor/kiauhoku
 [zclaytor]: https://claytorastro.wixsite.com/home
 [gyro paper]: https://ui.adsabs.harvard.edu/abs/2020ApJ...888...43C/abstract
