@@ -9,7 +9,7 @@
 project = 'kiauhoku'
 copyright = '2025, Zachary R. Claytor'
 author = 'Zachary R. Claytor'
-release = '2.1.1.dev1'
+release = '2.1.1.dev2'
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
