@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - test_deploy
     tags:
       - 'v*'
   pull_request:
