@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - test_deploy
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
