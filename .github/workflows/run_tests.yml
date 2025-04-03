@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - test_deploy
   pull_request:
   schedule:
     - cron: '0 0 1 * *' # Runs the first day of every month
