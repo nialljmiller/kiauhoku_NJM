@@ -1,6 +1,10 @@
-name: Run monthly tests
+name: Run tests
 
 on:
+  push:
+    branches:
+      - dev
+  pull_request:
   schedule:
     - cron: '0 0 1 * *' # Runs the first day of every month
 
