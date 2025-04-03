@@ -6,10 +6,19 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
+import os
+import sys
+
+# Add the package's root directory to sys.path
+sys.path.insert(0, os.path.abspath('../../kiauhoku'))
+
+# Import the version from the package
+from kiauhoku import __version__
+
 project = 'kiauhoku'
 copyright = '2025, Zachary R. Claytor'
 author = 'Zachary R. Claytor'
-release = '2.1.1.dev0'
+release = __version__
 root_doc = 'index'
 
 # -- General configuration ---------------------------------------------------
