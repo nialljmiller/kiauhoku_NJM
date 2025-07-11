@@ -1,2 +1,6 @@
-__pycache__/
+__pycache__
 kiauhoku.egg-info/
+build/
+dist/
+.DS_Store
+docs/build/
