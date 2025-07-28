@@ -641,12 +641,18 @@ class StarGridInterpolator(DFInterpolator):
         # Run sampling stage
         pos, prob, state, blobs = sampler.run_mcmc(pos, n_iter, progress=progress)
 
-        samples = pd.DataFrame(sampler.flatchain, columns=self.index.names)
-        blobs = sampler.get_blobs(flat=True)
-        blobs = pd.concat(blobs['star'], axis=1).T
+        rows = []
+        for b in sampler.flatblobs:
+            if b is not None and b['star'] is not None:
+                rows.append(b['star']) # append interpolator output
+            else:
+                rows.append(pd.Series(dtype='float64'))  # empty row
 
+        blobs_df = pd.DataFrame.from_records(rows)
+
+        samples_df = pd.DataFrame(sampler.flatchain, columns=self.index.names)
         # Concatenate Markov chains with blobs
-        output = pd.concat([samples, blobs], axis=1)
+        output = pd.concat([samples_df, blobs_df], axis=1)
 
         # Save output if desired
         if save_path:
