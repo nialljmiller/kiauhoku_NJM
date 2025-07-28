@@ -87,13 +87,13 @@ def install(
     eeps = from_pandas(eeps, name=name)
 
     # Save EEP grid to file
-    eep_save_path = os.path.join(path, 'mist_eep.pqt')
+    eep_save_path = os.path.join(path, f'{name}_eep.pqt')
     print(f'Saving to {eep_save_path}')
     eeps.to_parquet(eep_save_path)
 
     # Create and save interpolator to file
     interp = eeps.to_interpolator()
-    interp_save_path = os.path.join(path, 'mist_interpolator.pkl')
+    interp_save_path = os.path.join(path, f'{name}_interpolator.pkl')
     print(f'Saving interpolator to {interp_save_path}')
     interp.to_pickle(path=interp_save_path)
 

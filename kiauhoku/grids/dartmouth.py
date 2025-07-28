@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from ..utils.eep import get_RGBTip
 
+
 # Assign labels used in eep conversion
 eep_params = dict(
     age = 'Age (yrs)',
@@ -21,12 +22,11 @@ eep_params = dict(
     # `intervals` is a list containing the number of secondary Equivalent
     # Evolutionary Phases (EEPs) between each pair of primary EEPs.
     intervals = [200, # Between PreMS and ZAMS
-                  50, # Between ZAMS and EAMS 
-                 100, # Between EAMS and IAMS
+                 150, # Between ZAMS and IAMS 
                  100, # IAMS-TAMS
-                 150, # TAMS-RGBump
-                  50] # RGBump-RGBTip
+                 200] # TAMS-RGBTip
 )
+
 
 def my_PreMS(track, eep_params, i0=None):
     '''
@@ -34,6 +34,7 @@ def my_PreMS(track, eep_params, i0=None):
     the default PreMS calculation. For now, let the first point be the PreMS.
     '''
     return 0
+
 
 def my_TAMS(track, eep_params, i0, Xmin=1e-5):
     '''
@@ -49,33 +50,6 @@ def my_TAMS(track, eep_params, i0, Xmin=1e-5):
         return -1
     return below_crit.idxmax()
 
-def my_RGBump(track, eep_params, i0=None):
-    '''
-    Modified from eep.get_RGBump to make luminosity logarithmic
-    '''
-
-    lum = eep_params['lum']
-    log_teff = eep_params['log_teff']
-    N = len(track)
-
-    lum_tr = track.loc[i0:, lum]
-    logT_tr = track.loc[i0:, log_teff]
-
-    lum_greater = (lum_tr > 0.56)
-    if not lum_greater.any():
-        return -1
-    RGBump = lum_greater.idxmax() + 1
-
-    while logT_tr[RGBump] < logT_tr[RGBump-1] and RGBump < N-1:
-        RGBump += 1
-
-    # Two cases: 1) We didn't reach an extremum, in which case RGBump gets
-    # set as the final index of the track. In this case, return -1.
-    # 2) We found the extremum, in which case RGBump gets set
-    # as the index corresponding to the extremum.
-    if RGBump >= N-1:
-        return -1
-    return RGBump-1
 
 def my_HRD(track, eep_params):
     '''
@@ -100,6 +74,7 @@ def my_HRD(track, eep_params):
         dist[i] = dist[i-1] + np.sqrt(temp_dist)
 
     return dist
+
 
 def from_dartmouth(path):
     fname = path.split('/')[-1]
@@ -136,6 +111,7 @@ def from_dartmouth(path):
 
     return df
 
+
 def all_from_dartmouth(raw_grids_path, progress=True):
     df_list = []
     filelist = [f for f in os.listdir(raw_grids_path) if '.trk' in f]
@@ -155,11 +131,13 @@ def all_from_dartmouth(raw_grids_path, progress=True):
 
     return dfs    
 
+
 def install(
     raw_grids_path,
     name=None,
     eep_params=eep_params,
-    eep_functions={'prems': my_PreMS, 'tams': my_TAMS, 'rgbump': my_RGBump, 'rgbtip': get_RGBTip},
+    eep_functions={'prems': my_PreMS, 'tams': my_TAMS, 'rgbtip': get_RGBTip},
+    eep_order=['prems', 'zams', 'iams', 'tams', 'rgbtip'],
     metric_function=my_HRD,
     ):
     '''
@@ -208,7 +186,7 @@ def install(
         os.makedirs(path)
 
     # Cache eep parameters
-    with open(os.path.join(path, 'dartmouth_eep_params.pkl'), 'wb') as f:
+    with open(os.path.join(path, f'{name}_eep_params.pkl'), 'wb') as f:
         pickle.dump(eep_params, f)
 
     print('Reading and combining grid files')
@@ -216,21 +194,21 @@ def install(
     grids = from_pandas(grids, name=name)
 
     # Save full grid to file
-    full_save_path = os.path.join(path, 'dartmouth_full.pqt')
+    full_save_path = os.path.join(path, f'{name}_full.pqt')
     print(f'Saving to {full_save_path}')
     grids.to_parquet(full_save_path)
 
     print(f'Converting to eep-based tracks')
-    eeps = grids.to_eep(eep_params, eep_functions, metric_function)
+    eeps = grids.to_eep(eep_params, eep_functions, metric_function, eep_order=eep_order)
 
     # Save EEP grid to file
-    eep_save_path = os.path.join(path, 'dartmouth_eep.pqt')
+    eep_save_path = os.path.join(path, f'{name}_eep.pqt')
     print(f'Saving to {eep_save_path}')
     eeps.to_parquet(eep_save_path)
 
     # Create and save interpolator to file
     interp = eeps.to_interpolator()
-    interp_save_path = os.path.join(path, 'dartmouth_interpolator.pkl')
+    interp_save_path = os.path.join(path, f'{name}_interpolator.pkl')
     print(f'Saving interpolator to {interp_save_path}')
     interp.to_pickle(path=interp_save_path)
 
