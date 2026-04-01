@@ -5,4 +5,6 @@ build/
 dist/
 .DS_Store
 docs/build/
-grids/
+grids/JT2017t11_eep.pqt
+JT2017t11_full.pqt
+JT2017t11_interpolator.pkl
