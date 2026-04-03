@@ -699,6 +699,62 @@ class StarGridInterpolator(DFInterpolator):
         models = grid.find_closest(star_dict, n=n, method=method, **kw)
         return models
 
+    def nearest_match(self, star_dict, n=10, scale=None):
+        '''
+        Find the n closest discrete grid models to a given star.
+
+        This is a pure nearest-neighbour search on the discrete grid — no
+        continuous interpolation, no optimizer, no possibility of NaN failure.
+        It will always return a result as long as the grid has any rows.
+
+        Parameters
+        ----------
+        star_dict : dict
+            Observed stellar parameters, e.g.:
+            {'teff': 4718.9, 'logg': 2.515, 'met': -0.26}
+            Keys must match column names in the grid.
+
+        n : int
+            Number of closest matches to return. Default 10.
+
+        scale : dict or None
+            Scale factors for each parameter so that no single parameter
+            dominates the distance (e.g. teff ~5000 vs met ~0.1).
+            If None, auto-computed from the range of each column in the grid.
+
+        Returns
+        -------
+        matches : pandas.DataFrame
+            The n closest grid models, sorted by distance (closest first).
+            Includes a 'distance' column (scaled Euclidean distance) and a
+            'rank' column.
+        '''
+        grid = self.get_star_grid()
+
+        # Auto-scale so no parameter dominates the distance metric
+        if scale is None:
+            scale = {}
+            for label in star_dict:
+                if label in grid.columns:
+                    col_range = grid[label].max() - grid[label].min()
+                    scale[label] = col_range if col_range > 0 else 1.0
+                else:
+                    scale[label] = 1.0
+
+        # Compute scaled squared distance from star_dict to every grid row
+        sq_dist = sum(
+            ((star_dict[l] - grid[l]) / scale[l])**2
+            for l in star_dict if l in grid.columns
+        )
+
+        # Sort and take the n closest
+        closest_idx = sq_dist.sort_values().head(n).index
+        matches = grid.loc[closest_idx].copy()
+        matches['distance'] = np.sqrt(sq_dist.loc[closest_idx])
+        matches['rank'] = range(1, len(matches) + 1)
+
+        return matches
+
     def fit_star(self, star_dict, guess, *args,
                  loss='meansquarederror', scale=None, **kwargs
     ):
@@ -828,18 +884,30 @@ class StarGridInterpolator(DFInterpolator):
                     
 
         for idx in closest_matches.index:
-            # Pre-validate: if the guess itself produces NaN from the 
-            # interpolator, skip it entirely. This prevents the optimizer
-            # from probing nearby NaN/boundary regions that can segfault 
-            # in the numba interpolation code.
+            # Pre-validate: the guess must produce a non-NaN result from the
+            # continuous interpolator before we hand it to the optimizer.
+            #
+            # Why can a valid discrete grid point return NaN from the interpolator?
+            # The DFInterpolator does n-linear interpolation over a hypercube of
+            # grid corners. Near the end of a stellar track (e.g., the RGB tip),
+            # neighbouring tracks in mass/met/alpha/he/mixing_length space may
+            # have terminated at a lower EEP, leaving NaN corners in the
+            # hypercube. n-linear interpolation propagates those NaNs even when
+            # the requested point itself is valid on the grid.
+            #
+            # Fix: if the guess is in a NaN-boundary region, step the EEP
+            # inward (away from the track terminus) until we reach a cell where
+            # all hypercube corners are alive. This gives the optimizer a valid
+            # interior starting point rather than no starting point at all.
             try:
                 clamped_idx = self._clamp_index(idx)
                 test_star = self.get_star_eep(clamped_idx)
                 if test_star.isna().any():
-                    n_oob += 1
-                    if verbose:
-                        print(f'{self.name}: guess {idx} is in NaN region, skipping.')
-                    continue
+                    interior_idx = self._find_interior_starting_point(idx)
+                    if interior_idx is None:
+                        n_oob += 1
+                        continue
+                    idx = interior_idx
             except Exception:
                 n_oob += 1
                 continue
@@ -870,13 +938,36 @@ class StarGridInterpolator(DFInterpolator):
 
         # Check to see how the fit did, print comments if desired.
         if not some_fit:
-            if n_oob == len(closest_matches):
-                if verbose:
-                    print(f'*!*!*!* {self.name}: all {n_oob} guesses converged outside grid. '
-                          f'Star may be outside grid coverage.')
-            elif verbose:
-                print(f'*!*!*!* {self.name} fit failed! ({n_oob} guesses hit grid boundary)')
-            return None, last_fit
+            if verbose:
+                if n_oob == len(closest_matches):
+                    print(f'{self.name}: all starting points were outside the interpolatable ')
+                    print(f'  region (likely near grid boundary). Returning nearest grid match.')
+                else:
+                    print(f'{self.name}: optimizer did not converge. Returning nearest grid match.')
+
+            # Fall back to nearest-neighbour on the discrete grid.
+            # This always succeeds and gives a physically meaningful answer.
+            nn = self.nearest_match(star_dict, n=1, scale=scale)
+            best_model = nn.iloc[0].drop(labels=['distance', 'rank'])
+            distance = nn.iloc[0]['distance']
+            # The discrete grid stores index dimensions (mass, met, eep, etc.)
+            # in the MultiIndex, not as columns. Add them to the Series so
+            # callers can access them by name, consistent with the optimizer path.
+            for label, value in zip(self.index_names, nn.index[0]):
+                best_model[label] = value
+
+            # Return a lightweight result object compatible with callers that
+            # check fit.success and fit.fun.
+            from types import SimpleNamespace
+            fallback_fit = SimpleNamespace(
+                success=True,
+                fun=distance,
+                message='nearest discrete grid match (optimizer fallback)'
+            )
+            if verbose:
+                print(f'{self.name}: nearest match distance = {distance:.4f} (lower is better)')
+            return best_model, fallback_fit
+
         if verbose and not good_fit:
             print(f'{self.name}: Fit not converged to within tolerance, but returning closest fit.')
 
@@ -1012,6 +1103,70 @@ class StarGridInterpolator(DFInterpolator):
             eps = (hi - lo) * 1e-8
             clamped.append(np.clip(float(val), lo + eps, hi - eps))
         return tuple(clamped)
+
+    def _find_interior_starting_point(self, idx, eep_label='eep', step_size=5, max_retreat=30):
+        '''
+        Given a grid index that sits at or near a track boundary (where the
+        continuous interpolator returns NaN because neighbouring tracks in the
+        hypercube have already terminated), step the EEP dimension inward until
+        we land in a cell where every corner of the interpolation hypercube is
+        valid.
+
+        This is necessary because `find_closest` returns discrete grid points
+        that are themselves non-NaN, but the n-linear DFInterpolator requires
+        all 2^N corners of the surrounding hypercube to be non-NaN. Near the
+        tip of a track (e.g., the RGB) some mass/met/alpha neighbours will have
+        terminated earlier, poisoning the hypercube and returning NaN even for
+        a point that is individually valid.
+
+        The `max_retreat` cap is critical: if the only valid interior point
+        requires stepping far back in EEP (e.g., >30 units), the resulting
+        starting point is in a completely different evolutionary phase from the
+        target star. Feeding that to the optimizer produces a converged but
+        physically wrong solution. It is better to discard such a guess entirely
+        and let the optimizer work from the remaining closer candidates.
+
+        Parameters
+        ----------
+        idx : tuple
+            Discrete grid index (e.g., from find_closest).
+        eep_label : str
+            Name of the EEP dimension in self.index_names.
+        step_size : float
+            How far to step inward per iteration (in EEP units).
+        max_retreat : float
+            Maximum total EEP retreat allowed. If no valid point is found
+            within this many EEP units of the original guess, return None.
+
+        Returns
+        -------
+        tuple or None
+            A nearby index inside the valid continuous region, or None if no
+            valid point was found within `max_retreat` EEP units.
+        '''
+        if eep_label not in self.index_names:
+            return None  # grid has no EEP dimension; can't step inward
+
+        eep_pos = self.index_names.index(eep_label)
+        eep_min = float(self.index_columns[eep_pos].min())
+        original_eep = float(idx[eep_pos])
+
+        idx_list = list(idx)
+        while True:
+            retreat = original_eep - idx_list[eep_pos]
+            if retreat > max_retreat:
+                return None
+            clamped = self._clamp_index(tuple(idx_list))
+            try:
+                test = self.get_star_eep(clamped)
+                if not test.isna().any():
+                    return tuple(idx_list)
+            except Exception:
+                pass
+            new_eep = idx_list[eep_pos] - step_size
+            if new_eep < eep_min:
+                return None
+            idx_list[eep_pos] = new_eep
 
     def _meansquarederror(self, index, star_dict, scale=None):
         '''Mean Squared Error loss function for `fit_star`.
