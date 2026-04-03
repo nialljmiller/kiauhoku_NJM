@@ -82,22 +82,28 @@ class StarGrid(pd.DataFrame):
         maxs = [idx.get_level_values(n).max() for n in idx.names]
         return pd.Series(zip(mins, maxs), index=idx.names)
 
+
     def get_track(self, index):
-        '''Get a track at a specific index.
+        if not isinstance(index, tuple):
+            index = tuple(index)
 
-        Parameters
-        ----------
-        index (tuple): corresponds to the input indices of the grid. For
-            example, if your grid is indexed by mass, metallicity, and alpha-
-            abundance, to get the track for mass=1, metallicity=0.5, alpha=0,
+        if index in self.index.droplevel(-1):
+            star_values = self._get_track(index)
+        else:
+            num_eeps = self.max_eep + 1
+            ones_arr = np.ones(num_eeps)
+            idx = [i*ones_arr for i in index] + [np.arange(num_eeps)]
+            star_values = self(idx)
+            
+        track = StarGrid(star_values, columns=self.columns,
+                         name=self.name, eep_params=self.eep_params)
+        
+        # Drop rows where interpolation returned all NaN
+        # (EEPs beyond the track's evolutionary extent)
+        track = track.dropna(how='all')
+        
+        return track
 
-            >>> track = grid.get_track((1, 0.5, 0))
-
-        Returns
-        -------
-        track (StarGrid): desired evolution track, now indexed only by step.
-        '''
-        return self.loc[index, :]
 
     def is_MultiIndex(self):
         '''Checks whether the StarGrid instance is MultiIndexed.'''
@@ -234,6 +240,21 @@ class StarGrid(pd.DataFrame):
         -------
         models (pandas.DataFrame): DataFrame containing the closest models.
         '''
+        # Auto-compute scale from grid column ranges if not provided.
+        # Without this, teff (~5000) dominates over logg (~3) and met (~0.1),
+        # so "closest" really means "closest in teff" and the initial guesses
+        # are all clustered in teff-space rather than spread across parameters.
+        if 'scale' not in kw or kw.get('scale') is None:
+            auto_scale = {}
+            for l in star_dict:
+                if l in self.columns:
+                    col_range = self[l].max() - self[l].min()
+                    # Avoid division by zero for constant columns
+                    auto_scale[l] = col_range if col_range > 0 else 1.0
+                else:
+                    auto_scale[l] = 1.0
+            kw['scale'] = auto_scale
+
         if method in ("leastsquares", "sumsquares", "meansquarederror", "mse"):
             i_closest = self._meansquarederror(star_dict, **kw).sort_values().head(n).index
         models = self.loc[i_closest]
@@ -241,7 +262,9 @@ class StarGrid(pd.DataFrame):
 
     def _meansquarederror(self, star_dict, scale=None):
         '''
-        Computes the mean squared error between the given data and the grid models.
+        Computes the mean squared error between the given data and the grid 
+        models. This is a DataFrame-level operation — it compares star_dict 
+        against every row in the grid.
 
         Parameters
         ----------
@@ -249,15 +272,11 @@ class StarGrid(pd.DataFrame):
 
         scale (dict, None): Optional values by which to scale the squared errors
             before taking the mean. This could be useful if, for example, 
-            luminosity is in solar units (~1) and age is in years (~10^9 years).
+            luminosity is in solar units (~1) and teff is in Kelvin (~5000).
 
         Returns
         -------
-        mse (pandas.DataFrame): the mean squared error for each grid model.
-
-        NOTE: The actual value returned is the sum of the squares of the error,
-        not the mean. SSE and MSE are identical up to a multiplicative constant,
-        so as long as the rank ordered values are used, it shouldn't matter.
+        error (pandas.Series): the sum of squared errors for each grid model.
         '''
         if scale is None:
             error = sum([(star_dict[l] - self[l])**2 for l in star_dict])
@@ -266,6 +285,7 @@ class StarGrid(pd.DataFrame):
         return error
 
     
+
     def get_eep_track_lengths(self):
         '''
         This is mainly a convenience function to be used in the script
@@ -460,33 +480,6 @@ class StarGridInterpolator(DFInterpolator):
         return star
 
     def get_star_age(self, index, age, age_label=None):
-        '''
-        Interpolate a single model from the grid, accessing by age.
-        Note that this method is slower than get_star_eep. get_star_age
-        interpolates an entire track from the grid, then runs a 1-D
-        interpolator over the track to get the parameters for the desired
-        age. get_star_eep is preferred to this method.
-
-        `index` should be a tuple of indices in the same way you would access
-        a model from a StarGrid. If your grid is indexed by mass and
-        metallicity, and you want a a 4.5-Gyr-old, 0.987-solar-mass,
-        0.2-metallicity star:
-
-        >>> star = grid.get_star_age((0.987, 0.2), 4.5)
-
-        Optional Arguments
-        ------------------
-        age_label (str, None): ideally, you should specify what your grid calls
-            age in eep_params in your setup file. If you did, then get_star_age
-            can figure out what to call 'age' from the eep_params that are
-            stored in the interpolator. If you didn't do this, you can specify
-            what your grid calls age using age_label. If grid uses 'Age(Gyr)':
-
-            >>> star = grid.get_star_age(
-                    (0.987, 0.2), 4.5, age_label='Age(Gyr)'
-                )
-        '''
-
         track = self.get_track(index)
         labels = track.columns
         if age_label is None:
@@ -498,7 +491,19 @@ class StarGridInterpolator(DFInterpolator):
             else:
                 age_label = eep_params['age']
 
-        interpf = interp1d(track[age_label], track.values.T)
+        # Drop NaN rows — these are EEPs beyond the track's extent
+        valid = track.dropna(subset=[age_label])
+        
+        if len(valid) < 2:
+            # Not enough valid points to interpolate
+            return pd.Series(np.nan, index=labels)
+        
+        ages = valid[age_label].values
+        if age < ages.min() or age > ages.max():
+            # Requested age is outside this track's valid range
+            return pd.Series(np.nan, index=labels)
+
+        interpf = interp1d(ages, valid.values.T)
         star = pd.Series(interpf(age), labels)
         return star
 
@@ -740,7 +745,27 @@ class StarGridInterpolator(DFInterpolator):
         else:
             args = (star_dict, *args)
         
-       
+        # Compute bounds slightly inset from grid edges.
+        # The numba interpolation code computes edge_index = index + 1 for
+        # the upper corners of the interpolation hypercube. When a value
+        # sits exactly on the grid maximum, this reads one element past the 
+        # end of the array, causing a segfault. Insetting by a tiny epsilon
+        # prevents this.
+        if 'bounds' not in kwargs:
+            bounds = []
+            for ic in self.index_columns:
+                lo, hi = ic.min(), ic.max()
+                eps = (hi - lo) * 1e-8
+                bounds.append((lo + eps, hi - eps))
+            kwargs['bounds'] = bounds
+        
+        # Clamp the guess inside the bounds — a guess sitting on or outside 
+        # the boundary would immediately trigger the segfault.
+        bounds = kwargs['bounds']
+        guess = tuple(
+            np.clip(g, lo, hi) for g, (lo, hi) in zip(guess, bounds)
+        )
+
         result = minimize(loss_function, guess, args=args, method='Nelder-Mead', **kwargs)
 
         return result
@@ -796,12 +821,43 @@ class StarGridInterpolator(DFInterpolator):
         best_loss = 1e10
         some_fit = False
         good_fit = False
+        n_oob = 0
+        last_fit = None
         
         closest_matches = self.find_closest(star_dict, scale=scale)
-            
+                    
+
         for idx in closest_matches.index:
-            fit = self.fit_star(star_dict, idx, *args, scale=scale, **kwargs)
+            # Pre-validate: if the guess itself produces NaN from the 
+            # interpolator, skip it entirely. This prevents the optimizer
+            # from probing nearby NaN/boundary regions that can segfault 
+            # in the numba interpolation code.
+            try:
+                clamped_idx = self._clamp_index(idx)
+                test_star = self.get_star_eep(clamped_idx)
+                if test_star.isna().any():
+                    n_oob += 1
+                    if verbose:
+                        print(f'{self.name}: guess {idx} is in NaN region, skipping.')
+                    continue
+            except Exception:
+                n_oob += 1
+                continue
+
+            try:
+                fit = self.fit_star(star_dict, idx, *args, scale=scale, **kwargs)
+            except Exception as e:
+                if verbose:
+                    print(f'{self.name}: guess {idx} raised {type(e).__name__}: {e}, skipping.')
+                continue
+            last_fit = fit
             if fit.success:
+                # Check if it converged to the penalty value (outside grid)
+                if fit.fun >= 1e29:
+                    n_oob += 1
+                    if verbose:
+                        print(f'{self.name}: guess {idx} converged outside grid, skipping.')
+                    continue
                 some_fit = True
                 if fit.fun < best_loss:
                     best_fit = fit
@@ -814,9 +870,13 @@ class StarGridInterpolator(DFInterpolator):
 
         # Check to see how the fit did, print comments if desired.
         if not some_fit:
-            if verbose:
-                print(f'*!*!*!* {self.name} fit failed! Returning last attempt.')
-            return None, fit
+            if n_oob == len(closest_matches):
+                if verbose:
+                    print(f'*!*!*!* {self.name}: all {n_oob} guesses converged outside grid. '
+                          f'Star may be outside grid coverage.')
+            elif verbose:
+                print(f'*!*!*!* {self.name} fit failed! ({n_oob} guesses hit grid boundary)')
+            return None, last_fit
         if verbose and not good_fit:
             print(f'{self.name}: Fit not converged to within tolerance, but returning closest fit.')
 
@@ -938,7 +998,22 @@ class StarGridInterpolator(DFInterpolator):
         
         return best_model, best_fit
     
-    def _meansquarederror(self, index, star_dict, scale=False):
+    def _clamp_index(self, index):
+        '''Clamp index values to be strictly inside grid boundaries.
+        
+        The numba interpolation code accesses grid[index+1] for the upper
+        hypercube corners. When index equals the grid maximum, this reads
+        past the end of the array and causes a segfault. Clamping to
+        (min + eps, max - eps) prevents this.
+        '''
+        clamped = []
+        for val, ic in zip(index, self.index_columns):
+            lo, hi = float(ic.min()), float(ic.max())
+            eps = (hi - lo) * 1e-8
+            clamped.append(np.clip(float(val), lo + eps, hi - eps))
+        return tuple(clamped)
+
+    def _meansquarederror(self, index, star_dict, scale=None):
         '''Mean Squared Error loss function for `fit_star`.
 
         Parameters
@@ -947,7 +1022,7 @@ class StarGridInterpolator(DFInterpolator):
 
         star_dict (dict): dictionary of values for loss function computation.
 
-        scale (dict, optional): Optionally scale the squared errors before
+        scale (dict, None): Optionally scale the squared errors before
             taking the mean. This could be useful if, for example, luminosity is
             in solar units (~1) and age is in years (~10^9 years).
 
@@ -955,8 +1030,13 @@ class StarGridInterpolator(DFInterpolator):
         -------
         mean squared error as a float.
         '''
-
+        index = self._clamp_index(index)
         star = self.get_star_eep(index)
+        # If interpolation returned NaN, the point is outside the grid.
+        # Return a large finite penalty so the optimizer knows to move
+        # back inward rather than treating this as an unknowable region.
+        if star.isna().any():
+            return 1e30
         if scale is None:
             sq_err = np.array([(star[l] - star_dict[l])**2 for l in star_dict])
         else:
@@ -977,8 +1057,10 @@ class StarGridInterpolator(DFInterpolator):
         -------
         mean percent error as a float.
         '''
-
+        index = self._clamp_index(index)
         star = self.get_star_eep(index)
+        if star.isna().any():
+            return 1e30
         mpe = np.average(
             [np.abs(star[l] - star_dict[l])/star_dict[l] for l in star_dict]
         )
@@ -989,6 +1071,7 @@ class StarGridInterpolator(DFInterpolator):
     ):
         '''Convenience routine to compute the chi-squared of a fit.
         '''
+        index = self._clamp_index(index)
         star = self.get_star_eep(index)
 
         chisq = 0
