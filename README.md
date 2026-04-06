@@ -1,11 +1,5 @@
 ## Changes from Upstream (nialljmiller/kiauhoku_NJM)
 
-### `custom_install.py`
-
-The upstream template reads processed `.track` files that already have named columns defined in a separate `column_labels.txt`, with a 3D grid index of `(initial_mass, initial_met, alpha_fe)`.
-
-This fork replaces that with a reader for the raw 84-column YREC output files from the Tayar 2017 grid (`nodiff_out4z`). No `column_labels.txt` is needed. Columns are extracted by position, log quantities are converted to linear, and H/He luminosities are computed from individual nuclear burning terms. The grid index is extended to 6D: `(initial_mass, initial_met, alpha_fe, initial_he, mixing_length, step)`.
-
 ### `kiauhoku/utils/interp.py`
 
 `interp_value_2d`, `interp_value_3d`, and `interp_value_4d` now skip NaN grid corners instead of propagating them into the result. When a track terminates before the requested EEP, that corner is excluded and the remaining weights are renormalized. If all corners are NaN, the result is NaN rather than zero.
