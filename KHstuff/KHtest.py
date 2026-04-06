@@ -12,14 +12,11 @@ def fit_all_grids(star, *args, **kwargs):
         ['jtgrid'],
         [jtgrid]):
         model, fit = interp.gridsearch_fit(star, *args, **kwargs)
-        if model is not None and fit is not None and fit.success:
+        if fit.success:
             gridnames.append(gname)
             models.append(
                 model[['initial_mass', 'initial_met', 'initial_he', 'alpha_fe', 'mixing_length', 'eep', 'mass', 'teff', 'lum', 'met', 'logg', 'age']]
             )
-    if len(models) == 0:
-        print("No successful fits found.")
-        return None
     models = pd.concat(models, axis=1)
     models.columns = gridnames
 
@@ -74,8 +71,14 @@ jtgrid =jtgrid.to_interpolator()
 #APOKASC Red giant : get Segmentation fault (core dumped). Not obviously a memory issue.        
 star4= {'teff':4718.9, 'lum':1.82, 'met':-0.2617, 
         'logg':2.515, 'alpha_fe':0.0815 , 'initial_he': 0.2640}
-star5 = {'age': 4.57, 'mass': 1.0, 'met': 0, 'alpha_fe': 0, 'initial_he': 0.272}
-scale1 = {'age': 1.0, 'mass': 0.1, 'met': 0.1, 'alpha_fe': 0.1, 'initial_he': 0.01}
-
-model4 = fit_all_grids(star5, scale=scale1, tol=1e-2)
+#from the less fancy version this      
+#mass=10^(logg)/10^(4.44)/(teff/5777)^4*10^logLLsun=1.76 Msun
+#put into APOKASCMeridithRightAnswer.txt, get mixing length=1.79 age=0.71 Gyr  
+        
+#the sun: success!       
+star5= {'teff':5777, 'lum':0, 'met':0, 
+        'logg':4.4, 'alpha_fe':0 , 'initial_he': 0.272}
+    
+scale1 = {'teff':1000, 'lum':0.1, 'met':0.1, 'logg':0.1, 'alpha_fe':0.1, 'initial_he':0.01}
+model4 = fit_all_grids(star5, scale=scale1, tol=1e-2, maxiter=100, bounds=[(0.7, 2.0), (-1.0,0.0), (0.0, 0.2), (0.24, 0.3), (1.2, 2.3)]
 print(model4)
