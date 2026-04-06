@@ -1,38 +1,18 @@
----
+## Changes from Upstream (nialljmiller/kiauhoku_NJM)
 
-## NJM Fork — Changes from Upstream
+### `custom_install.py`
 
-This fork ([nialljmiller/kiauhoku_NJM](https://github.com/nialljmiller/kiauhoku_NJM)) adds support for the Tayar 2017 YREC model grid (Tayar et al. 2017, ApJ 840 17) and fixes several issues with the interpolator when operating on sparse or incomplete grids.
+The upstream template reads processed `.track` files that already have named columns defined in a separate `column_labels.txt`, with a 3D grid index of `(initial_mass, initial_met, alpha_fe)`.
 
-### Tayar 2017 Grid (`custom_install.py`)
+This fork replaces that with a reader for the raw 84-column YREC output files from the Tayar 2017 grid (`nodiff_out4z`). No `column_labels.txt` is needed. Columns are extracted by position, log quantities are converted to linear, and H/He luminosities are computed from individual nuclear burning terms. The grid index is extended to 6D: `(initial_mass, initial_met, alpha_fe, initial_he, mixing_length, step)`.
 
-A `custom_install.py` is provided to install the full Tayar 2017 YREC grid as a kiauhoku-compatible 6D interpolator. The grid is indexed by:
+### `kiauhoku/utils/interp.py`
 
-`initial_mass`, `initial_met` ([Fe/H]), `alpha_fe` ([α/Fe]), `initial_he` (Y), `mixing_length` (α_MLT), `eep`
+`interp_value_2d`, `interp_value_3d`, and `interp_value_4d` now skip NaN grid corners instead of propagating them into the result. When a track terminates before the requested EEP, that corner is excluded and the remaining weights are renormalized. If all corners are NaN, the result is NaN rather than zero.
 
-To install:
+### `kiauhoku/stargrid.py`
 
-1. Download `ML_YREC_grid.zip` (22 GB) from [Zenodo](https://zenodo.org/records/15792763) and unzip it
-2. Set `raw_grids_path` in `custom_install.py` to point to the unzipped folder
-3. Run:
-```python
-import kiauhoku as kh
-kh.install_grid('custom_install')
-```
-
-The reader extracts 21 physically relevant columns from the raw 84-column YREC output files, including luminosity, radius, surface gravity, Teff, central and surface abundances, convective envelope mass, and hydrogen/helium luminosities.
-
-### Interpolator fixes (`kiauhoku/utils/interp.py`)
-
-The 2D, 3D, and 4D interpolation functions (`interp_value_2d/3d/4d`) now skip NaN grid corners rather than propagating NaN into the result. When a stellar track terminates before the requested EEP (common in sparse or incomplete grids), the affected corner is excluded and the remaining weights are renormalized. If all corners are NaN the result is returned as NaN rather than zero.
-
-### Optimizer fixes (`kiauhoku/stargrid.py`)
-
-`gridsearch_fit` now:
-- Automatically derives and applies bounds from the grid index extents, keeping the optimizer inside the valid grid region
-- Constructs a better initial Nelder-Mead simplex using 5% of each index column's total range as step size, avoiding degenerate simplex vertices when any parameter is near zero
-- Guards against NaN returns from the interpolator in the MSE loss function, returning a large penalty value (1e30) instead of crashing
-
+`gridsearch_fit` now automatically derives and enforces bounds from the grid index extents, and constructs a non-degenerate initial Nelder-Mead simplex using 5% of each dimension's range as step size (avoiding collapsed simplex vertices when any parameter is near zero). `_meansquarederror` now returns a large penalty value (1e30) when the interpolator returns NaN rather than crashing. A `nearest_match` method is added for pure nearest-neighbour lookup on the discrete grid without interpolation.
 # [Kīauhōkū][kiauhoku github]
 
 [![ascl:2011.027](https://img.shields.io/badge/ascl-2011.027-blue.svg?colorB=262255)](https://ascl.net/2011.027)
