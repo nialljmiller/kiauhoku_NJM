@@ -764,6 +764,41 @@ class StarGridInterpolator(DFInterpolator):
             args = (star_dict, *args)
         
        
+        # --- Bounds: keep optimizer inside the grid ---
+        # Derive [lo, hi] for each index dimension from the grid itself.
+        # Only set bounds if the caller has not already provided them.
+        if 'bounds' not in kwargs:
+            grid_bounds = []
+            for ic in self.index_columns:
+                lo, hi = float(ic.min()), float(ic.max())
+                grid_bounds.append((lo, hi))
+            kwargs = dict(kwargs)
+            kwargs['bounds'] = grid_bounds
+
+        # --- Initial simplex: use grid-relative step sizes ---
+        # Nelder-Mead perturbs x0 by 5% of the parameter value by default.
+        # If any parameter is 0 the corresponding simplex vertex degenerates
+        # (5% of 0 = 0) and that dimension is never explored.  We instead step
+        # by 5% of each index column's total range — always a real, non-zero
+        # perturbation — unless the caller has already supplied a simplex.
+        opts = kwargs.get('options', {})
+        if 'initial_simplex' not in opts:
+            g = list(guess)
+            ndim = len(g)
+            simplex = np.zeros((ndim + 1, ndim))
+            simplex[0] = g
+            for i, ic in enumerate(self.index_columns):
+                step = (float(ic.max()) - float(ic.min())) * 0.05
+                row = g[:]
+                row[i] += step
+                # Clamp the perturbed vertex to stay inside bounds
+                lo, hi = float(ic.min()), float(ic.max())
+                row[i] = float(np.clip(row[i], lo, hi))
+                simplex[i + 1] = row
+            opts = dict(opts)
+            opts['initial_simplex'] = simplex
+            kwargs['options'] = opts
+
         result = minimize(loss_function, guess, args=args, method='Nelder-Mead', **kwargs)
 
         return result
@@ -982,7 +1017,7 @@ class StarGridInterpolator(DFInterpolator):
             clamped.append(np.clip(float(val), lo + eps, hi - eps))
         return tuple(clamped)
 
-    def _meansquarederror(self, index, star_dict, scale=False):
+    def _meansquarederror(self, index, star_dict, scale=None):
         '''Mean Squared Error loss function for `fit_star`.
 
         Parameters
@@ -1025,7 +1060,10 @@ class StarGridInterpolator(DFInterpolator):
         mean percent error as a float.
         '''
 
+        index = self._clamp_index(index)
         star = self.get_star_eep(index)
+        if star.isna().any():
+            return 1e30
         mpe = np.average(
             [np.abs(star[l] - star_dict[l])/star_dict[l] for l in star_dict]
         )

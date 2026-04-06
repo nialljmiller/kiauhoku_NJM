@@ -1,3 +1,38 @@
+---
+
+## NJM Fork — Changes from Upstream
+
+This fork ([nialljmiller/kiauhoku_NJM](https://github.com/nialljmiller/kiauhoku_NJM)) adds support for the Tayar 2017 YREC model grid (Tayar et al. 2017, ApJ 840 17) and fixes several issues with the interpolator when operating on sparse or incomplete grids.
+
+### Tayar 2017 Grid (`custom_install.py`)
+
+A `custom_install.py` is provided to install the full Tayar 2017 YREC grid as a kiauhoku-compatible 6D interpolator. The grid is indexed by:
+
+`initial_mass`, `initial_met` ([Fe/H]), `alpha_fe` ([α/Fe]), `initial_he` (Y), `mixing_length` (α_MLT), `eep`
+
+To install:
+
+1. Download `ML_YREC_grid.zip` (22 GB) from [Zenodo](https://zenodo.org/records/15792763) and unzip it
+2. Set `raw_grids_path` in `custom_install.py` to point to the unzipped folder
+3. Run:
+```python
+import kiauhoku as kh
+kh.install_grid('custom_install')
+```
+
+The reader extracts 21 physically relevant columns from the raw 84-column YREC output files, including luminosity, radius, surface gravity, Teff, central and surface abundances, convective envelope mass, and hydrogen/helium luminosities.
+
+### Interpolator fixes (`kiauhoku/utils/interp.py`)
+
+The 2D, 3D, and 4D interpolation functions (`interp_value_2d/3d/4d`) now skip NaN grid corners rather than propagating NaN into the result. When a stellar track terminates before the requested EEP (common in sparse or incomplete grids), the affected corner is excluded and the remaining weights are renormalized. If all corners are NaN the result is returned as NaN rather than zero.
+
+### Optimizer fixes (`kiauhoku/stargrid.py`)
+
+`gridsearch_fit` now:
+- Automatically derives and applies bounds from the grid index extents, keeping the optimizer inside the valid grid region
+- Constructs a better initial Nelder-Mead simplex using 5% of each index column's total range as step size, avoiding degenerate simplex vertices when any parameter is near zero
+- Guards against NaN returns from the interpolator in the MSE loss function, returning a large penalty value (1e30) instead of crashing
+
 # [Kīauhōkū][kiauhoku github]
 
 [![ascl:2011.027](https://img.shields.io/badge/ascl-2011.027-blue.svg?colorB=262255)](https://ascl.net/2011.027)
