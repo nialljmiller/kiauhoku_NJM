@@ -1,12 +1,3 @@
-## Changes from Upstream (nialljmiller/kiauhoku_NJM)
-
-### `kiauhoku/utils/interp.py`
-
-`interp_value_2d`, `interp_value_3d`, and `interp_value_4d` now skip NaN grid corners instead of propagating them into the result. When a track terminates before the requested EEP, that corner is excluded and the remaining weights are renormalized. If all corners are NaN, the result is NaN rather than zero.
-
-### `kiauhoku/stargrid.py`
-
-`gridsearch_fit` now automatically derives and enforces bounds from the grid index extents, and constructs a non-degenerate initial Nelder-Mead simplex using 5% of each dimension's range as step size (avoiding collapsed simplex vertices when any parameter is near zero). `_meansquarederror` now returns a large penalty value (1e30) when the interpolator returns NaN rather than crashing. A `nearest_match` method is added for pure nearest-neighbour lookup on the discrete grid without interpolation.
 # [Kīauhōkū][kiauhoku github]
 
 [![ascl:2011.027](https://img.shields.io/badge/ascl-2011.027-blue.svg?colorB=262255)](https://ascl.net/2011.027)
