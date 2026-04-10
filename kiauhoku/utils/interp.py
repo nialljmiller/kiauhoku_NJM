@@ -427,7 +427,7 @@ def interp_value_2d(x0, x1, grid, icols, ii0, ii1):
 
         # Skip NaN corners: if this grid cell is NaN (track terminated here),
         # exclude it and renormalize the remaining weights instead of
-        # propagating NaN into the result.
+        # propagating NaN into the result. -- Niall Miller
         check_val = grid[(edge_indices[0], edge_indices[1], icols[0])]
         if check_val == check_val:  # False only for NaN
             for i_icol in range(n_values):
@@ -645,7 +645,7 @@ def interp_value_6d(x0, x1, x2, x3, x4, x5, grid, icols, ii0, ii1, ii2, ii3, ii4
 
         # Skip NaN corners: some tracks terminate before others, leaving NaN
         # cells in the grid. Rather than propagating NaN into the result,
-        # exclude those corners and renormalize over the valid ones.
+        # exclude those corners and renormalize over the valid ones. -- Niall Miller
         check_val = grid[(edge_indices[0], edge_indices[1], edge_indices[2], edge_indices[3], edge_indices[4], edge_indices[5], icols[0])]
         if check_val == check_val:  # False only for NaN (IEEE 754)
             for i_icol in range(n_values):

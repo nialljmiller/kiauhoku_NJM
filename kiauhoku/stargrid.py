@@ -697,7 +697,7 @@ class StarGridInterpolator(DFInterpolator):
 
     def nearest_match(self, star_dict, n=10, scale=None):
         '''Find the n closest discrete grid models to a given star.
-        Pure nearest-neighbour on the discrete grid — no interpolation, always returns a result.'''
+        Pure nearest-neighbour on the discrete grid — no interpolation, always returns a result. -- Niall Miller'''
         grid = self.get_star_grid()
         if scale is None:
             scale = {}
@@ -766,7 +766,7 @@ class StarGridInterpolator(DFInterpolator):
        
         # --- Bounds: keep optimizer inside the grid ---
         # Derive [lo, hi] for each index dimension from the grid itself.
-        # Only set bounds if the caller has not already provided them.
+        # Only set bounds if the caller has not already provided them. -- Niall Miller
         if 'bounds' not in kwargs:
             grid_bounds = []
             for ic in self.index_columns:
@@ -780,7 +780,7 @@ class StarGridInterpolator(DFInterpolator):
         # If any parameter is 0 the corresponding simplex vertex degenerates
         # (5% of 0 = 0) and that dimension is never explored.  We instead step
         # by 5% of each index column's total range — always a real, non-zero
-        # perturbation — unless the caller has already supplied a simplex.
+        # perturbation — unless the caller has already supplied a simplex. -- Niall Miller
         opts = kwargs.get('options', {})
         if 'initial_simplex' not in opts:
             g = list(guess)
